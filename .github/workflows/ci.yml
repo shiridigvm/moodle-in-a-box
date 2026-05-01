@@ -16,13 +16,20 @@ jobs:
       - name: PHP syntax check (theme)
         run: find theme/ -name '*.php' -exec php -l {} \;
 
+      - name: Prepare env for compose validation
+        run: |
+          cp .env.example .env
+          sed -i 's/CHANGE_ME_DB_PASSWORD/lint_db_pass/' .env
+          sed -i 's/CHANGE_ME_ROOT_PASSWORD/lint_root_pass/' .env
+          sed -i 's/CHANGE_ME_ADMIN_PASSWORD/lint_admin_pass/' .env
+
       - name: Validate docker-compose
         run: docker compose config --quiet
 
       - name: Validate production compose
-        run: |
-          export DOMAIN=test.example.com
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+        env:
+          DOMAIN: test.example.com
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 
       - name: Check shell scripts
         uses: ludeeus/action-shellcheck@master
