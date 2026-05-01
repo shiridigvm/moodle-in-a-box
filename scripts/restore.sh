@@ -9,6 +9,7 @@ if [ $# -lt 1 ]; then
     echo "Example: $0 20250428_143000"
     echo
     echo "Available backups:"
+    # shellcheck disable=SC2012
     ls "${PROJECT_DIR}/backups/"*_manifest.json 2>/dev/null | sed 's/.*moodle_backup_/  /;s/_manifest.json//' || echo "  (none found)"
     exit 1
 fi
@@ -17,6 +18,7 @@ TIMESTAMP="$1"
 BACKUP_DIR="${PROJECT_DIR}/backups"
 BACKUP_PREFIX="moodle_backup_${TIMESTAMP}"
 
+# shellcheck source=/dev/null
 source "$PROJECT_DIR/.env"
 
 for f in "${BACKUP_DIR}/${BACKUP_PREFIX}_db.sql" \
@@ -32,7 +34,7 @@ echo "==> Restoring from backup: ${TIMESTAMP}"
 echo
 cat "${BACKUP_DIR}/${BACKUP_PREFIX}_manifest.json"
 echo
-read -p "Continue? (y/N) " confirm
+read -r -p "Continue? (y/N) " confirm
 if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
     echo "Aborted."
     exit 0

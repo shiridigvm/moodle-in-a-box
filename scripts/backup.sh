@@ -7,6 +7,7 @@ BACKUP_DIR="${PROJECT_DIR}/backups"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
 BACKUP_NAME="moodle_backup_${TIMESTAMP}"
 
+# shellcheck source=/dev/null
 source "$PROJECT_DIR/.env"
 
 echo "==> Creating backup: ${BACKUP_NAME}"
@@ -39,7 +40,6 @@ cat > "${BACKUP_DIR}/${BACKUP_NAME}_manifest.json" <<EOF
 }
 EOF
 
-TOTAL_SIZE=$(du -sh "${BACKUP_DIR}/${BACKUP_NAME}"* | tail -1 | cut -f1)
 echo
 echo "==> Backup complete!"
 echo "    Location: ${BACKUP_DIR}/"
