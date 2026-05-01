@@ -1,0 +1,80 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ${USER}@${HOST} << 'DEPLOY_SCRIPT'
+            set -euo pipefail
+            cd ${DEPLOY_PATH}
+
+            echo "==> Pulling latest changes..."
+            git pull origin main
+
+            echo "==> Creating pre-deploy backup..."
+            bash scripts/backup.sh
+
+            echo "==> Enabling maintenance mode..."
+            docker compose exec -T moodle php /var/www/html/admin/cli/maintenance.php --enable || true
+
+            echo "==> Rebuilding and restarting..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+            echo "==> Waiting for health check..."
+            sleep 30
+            timeout 120 bash -c 'until docker compose exec -T moodle curl -sf http://localhost/login/index.php > /dev/null 2>&1; do sleep 5; done'
+
+            echo "==> Running upgrade if needed..."
+            docker compose exec -T moodle php /var/www/html/admin/cli/upgrade.php --non-interactive || true
+
+            echo "==> Purging caches..."
+            docker compose exec -T moodle php /var/www/html/admin/cli/purge_caches.php
+
+            echo "==> Disabling maintenance mode..."
+            docker compose exec -T moodle php /var/www/html/admin/cli/maintenance.php --disable
+
+            echo "==> Deploy complete!"
+          DEPLOY_SCRIPT
+
+      - name: Smoke test
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: bash tests/smoke-test.sh "$SITE_URL"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Deployment to ${{ github.event.inputs.environment }} failed! Check logs."
