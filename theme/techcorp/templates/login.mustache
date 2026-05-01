@@ -1,0 +1,31 @@
+{{{output.doctype}}}
+<html {{{output.htmlattributes}}}>
+<head>
+    <title>{{{output.page_title}}}</title>
+    <link rel="shortcut icon" href="{{{output.favicon}}}" />
+    {{{output.standard_head_html}}}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body {{{bodyattributes}}}>
+{{{output.standard_top_of_body_html}}}
+
+<div id="page-wrapper" class="d-print-block">
+    <div id="page" class="container-fluid">
+        <div id="page-content" class="row justify-content-center align-items-center" style="min-height: 100vh;">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
+                <div class="login-wrapper">
+                    <div class="login-heading">
+                        <h2>TechCorp Academy</h2>
+                        <p class="text-muted">Sign in to continue your learning</p>
+                    </div>
+                    <span class="notifications" id="user-notifications"></span>
+                    {{{output.main_content}}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{{output.standard_end_of_body_html}}}
+</body>
+</html>

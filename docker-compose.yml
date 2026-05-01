@@ -1,0 +1,128 @@
+services:
+  moodle:
+    build:
+      context: .
+      dockerfile: docker/moodle/Dockerfile
+    container_name: moodle-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - MOODLE_DATABASE_HOST=db
+      - MOODLE_DATABASE_NAME=${DB_NAME:-moodle}
+      - MOODLE_DATABASE_USER=${DB_USER:-moodle}
+      - MOODLE_DATABASE_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+      - MOODLE_WWWROOT=${MOODLE_WWWROOT:-http://localhost}
+      - MOODLE_ADMIN_USER=${MOODLE_ADMIN_USER:-admin}
+      - MOODLE_ADMIN_PASSWORD=${MOODLE_ADMIN_PASSWORD:?MOODLE_ADMIN_PASSWORD is required}
+      - MOODLE_ADMIN_EMAIL=${MOODLE_ADMIN_EMAIL:-admin@example.com}
+      - MOODLE_FULLNAME=${MOODLE_FULLNAME:-TechCorp Academy}
+      - MOODLE_SHORTNAME=${MOODLE_SHORTNAME:-TechCorp}
+      - REDIS_HOST=redis
+    volumes:
+      - moodle-data:/var/www/moodledata
+      - ./theme/techcorp:/var/www/html/theme/techcorp:ro
+      - ./config/php.ini:/usr/local/etc/php/conf.d/moodle.ini:ro
+    networks:
+      - moodle-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/login/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  db:
+    image: mariadb:11.4
+    container_name: moodle-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
+      - MYSQL_DATABASE=${DB_NAME:-moodle}
+      - MYSQL_USER=${DB_USER:-moodle}
+      - MYSQL_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - moodle-net
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-file-per-table=1
+      --innodb-buffer-pool-size=512M
+      --innodb-log-file-size=128M
+      --max-allowed-packet=128M
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: moodle-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - moodle-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: moodle-nginx
+    restart: unless-stopped
+    depends_on:
+      moodle:
+        condition: service_started
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - certbot-webroot:/var/www/certbot:ro
+    networks:
+      - moodle-net
+
+  cron:
+    build:
+      context: .
+      dockerfile: docker/moodle/Dockerfile
+    container_name: moodle-cron
+    restart: unless-stopped
+    depends_on:
+      moodle:
+        condition: service_healthy
+    entrypoint: /usr/local/bin/moodle-cron.sh
+    environment:
+      - MOODLE_DATABASE_HOST=db
+      - MOODLE_DATABASE_NAME=${DB_NAME:-moodle}
+      - MOODLE_DATABASE_USER=${DB_USER:-moodle}
+      - MOODLE_DATABASE_PASSWORD=${DB_PASSWORD:?DB_PASSWORD is required}
+      - REDIS_HOST=redis
+    volumes:
+      - moodle-data:/var/www/moodledata
+      - ./theme/techcorp:/var/www/html/theme/techcorp:ro
+      - ./docker/cron/moodle-cron.sh:/usr/local/bin/moodle-cron.sh:ro
+    networks:
+      - moodle-net
+
+volumes:
+  moodle-data:
+  db-data:
+  redis-data:
+  certbot-webroot:
+
+networks:
+  moodle-net:
+    driver: bridge

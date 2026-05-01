@@ -1,0 +1,6 @@
+.env
+backups/
+docker/nginx/ssl/*.pem
+docker/nginx/ssl/*.key
+*.log
+.DS_Store

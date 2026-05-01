@@ -1,0 +1,63 @@
+{{{output.doctype}}}
+<html {{{output.htmlattributes}}}>
+<head>
+    <title>{{{output.page_title}}}</title>
+    <link rel="shortcut icon" href="{{{output.favicon}}}" />
+    {{{output.standard_head_html}}}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body {{{bodyattributes}}}>
+{{{output.standard_top_of_body_html}}}
+
+<div id="page-wrapper" class="d-print-block">
+    {{{output.full_header}}}
+
+    <div id="page" class="container-fluid mt-3">
+        <div id="page-content" class="row pb-3 d-print-block">
+            <div id="region-main-box" class="col-12">
+                {{#hasblocks}}
+                <div class="row">
+                    <section id="region-main" class="col-lg-9">
+                {{/hasblocks}}
+                {{^hasblocks}}
+                <section id="region-main" class="col-12">
+                {{/hasblocks}}
+                        <span class="notifications" id="user-notifications"></span>
+                        {{{output.course_content_header}}}
+                        {{{output.main_content}}}
+                        {{{output.course_content_footer}}}
+                {{#hasblocks}}
+                    </section>
+                    <section id="block-region-side-pre" class="col-lg-3 d-print-none" data-region="blocks-column" data-droptarget="1">
+                        {{{sidepreblocks}}}
+                    </section>
+                </div>
+                {{/hasblocks}}
+                {{^hasblocks}}
+                </section>
+                {{/hasblocks}}
+            </div>
+        </div>
+    </div>
+
+    {{{output.standard_after_main_region_html}}}
+
+    <footer id="page-footer" class="py-4 mt-auto">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-6">
+                    <span class="techcorp-footer-brand">{{#str}}footer_brand, theme_techcorp{{/str}}</span>
+                    <p class="mt-1 mb-0 small">{{#str}}footer_tagline, theme_techcorp{{/str}}</p>
+                </div>
+                <div class="col-md-6 text-md-right">
+                    {{{output.standard_footer_html}}}
+                    {{{output.page_doc_link}}}
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+{{{output.standard_end_of_body_html}}}
+</body>
+</html>
